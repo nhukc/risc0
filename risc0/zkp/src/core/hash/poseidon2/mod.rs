@@ -121,17 +121,13 @@ fn do_partial_sboxes(cells: &mut [Elem; CELLS]) {
 }
 
 fn multiply_by_m_int(cells: &mut [Elem; CELLS]) {
-    let old_cells = *cells;
+    // Exploit the fact that off-diagonal entries of M_INT are all 1.
+    let mut sum = Elem::new(0);
     for i in 0..CELLS {
-        let mut tot = Elem::new(0);
-        for j in 0..CELLS {
-            if i == j {
-                tot += (M_INT_DIAG[i] + Elem::new(1)) * old_cells[j];
-            } else {
-                tot += old_cells[j];
-            }
-        }
-        cells[i] = tot;
+        sum += cells[i];
+    }
+    for i in 0..CELLS {
+        cells[i] = sum + M_INT_DIAG[i] * cells[i];
     }
 }
 
@@ -220,7 +216,22 @@ mod tests {
     fn partial_round_naive(cells: &mut [Elem; CELLS], round: usize) {
         add_round_constants_partial(cells, round);
         do_partial_sboxes(cells);
-        multiply_by_m_int(cells);
+        multiply_by_m_int_naive(cells);
+    }
+
+    fn multiply_by_m_int_naive(cells: &mut [Elem; CELLS]) {
+        let old_cells = *cells;
+        for i in 0..CELLS {
+            let mut tot = Elem::new(0);
+            for j in 0..CELLS {
+                if i == j {
+                    tot += (M_INT_DIAG[i] + Elem::new(1)) * old_cells[j];
+                } else {
+                    tot += old_cells[j];
+                }
+            }
+            cells[i] = tot;
+        }
     }
 
     // Naive version of poseidon

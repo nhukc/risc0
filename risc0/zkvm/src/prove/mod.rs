@@ -121,7 +121,7 @@ pub mod cpu {
     use risc0_circuit_rv32im::{cpu::CpuEvalCheck, CircuitImpl};
     use risc0_core::field::baby_bear::BabyBear;
     use risc0_zkp::{
-        core::hash::{poseidon::PoseidonHashSuite, sha::Sha256HashSuite},
+        core::hash::{poseidon::PoseidonHashSuite, sha::Sha256HashSuite, poseidon2::Poseidon2HashSuite},
         hal::cpu::CpuHal,
     };
 
@@ -152,6 +152,20 @@ pub mod cpu {
     /// multi-core CPUs.
     pub fn poseidon_hal_eval() -> HalEval<CpuHal<BabyBear>, CpuEvalCheck<'static, CircuitImpl>> {
         let hal = Rc::new(CpuHal::new(PoseidonHashSuite::new_suite()));
+        let eval = Rc::new(CpuEvalCheck::new(&CIRCUIT));
+        HalEval { hal, eval }
+    }
+    
+    /// Creates a HAL for the rv32im circuit that uses the Poseidon2 hashing
+    /// function.
+    ///
+    /// The zkVM uses a
+    /// [HAL](https://docs.rs/risc0-zkp/latest/risc0_zkp/hal/index.html)
+    /// (Hardware Abstraction Layer) to accelerate computationally intensive
+    /// operations. This function returns a HAL implementation that makes use of
+    /// multi-core CPUs.
+    pub fn poseidon2_hal_eval() -> HalEval<CpuHal<BabyBear>, CpuEvalCheck<'static, CircuitImpl>> {
+        let hal = Rc::new(CpuHal::new(Poseidon2HashSuite::new_suite()));
         let eval = Rc::new(CpuEvalCheck::new(&CIRCUIT));
         HalEval { hal, eval }
     }
@@ -222,6 +236,10 @@ fn provers() -> HashMap<String, Rc<dyn Prover>> {
         let prover = Rc::new(LocalProver::new("cpu:poseidon", cpu::poseidon_hal_eval()));
         table.insert("cpu:poseidon".to_string(), prover.clone());
         table.insert("$poseidon".to_string(), prover);
+        
+        let prover = Rc::new(LocalProver::new("cpu:poseidon2", cpu::poseidon2_hal_eval()));
+        table.insert("cpu:poseidon2".to_string(), prover.clone());
+        table.insert("$poseidon2".to_string(), prover);
 
         let prover = Rc::new(RemoteProver::new("bonsai"));
         table.insert("$bonsai".to_string(), prover);

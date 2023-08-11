@@ -75,6 +75,7 @@ enum HashFn {
     #[value(name = "sha-256")]
     Sha256,
     Poseidon,
+    Poseidon2,
 }
 
 fn main() {
@@ -160,6 +161,7 @@ impl Cli {
         let hashfn = match self.hashfn {
             HashFn::Sha256 => "sha-256",
             HashFn::Poseidon => "poseidon",
+            HashFn::Poseidon2 => "poseidon2",
         };
         let opts = ProverOpts {
             hashfn: hashfn.to_string(),

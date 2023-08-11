@@ -25,7 +25,7 @@ use risc0_zkp::{
     core::{
         digest::Digest,
         hash::{
-            blake2b::Blake2bCpuHashSuite, poseidon::PoseidonHashSuite, sha::Sha256HashSuite,
+            blake2b::Blake2bCpuHashSuite, poseidon::PoseidonHashSuite, sha::Sha256HashSuite, poseidon2::Poseidon2HashSuite,
             HashSuite,
         },
     },
@@ -36,7 +36,7 @@ use risc0_zkvm_platform::WORD_SIZE;
 use serde::{Deserialize, Serialize};
 
 use super::{
-    control_id::{BLAKE2B_CONTROL_ID, POSEIDON_CONTROL_ID, SHA256_CONTROL_ID},
+    control_id::{BLAKE2B_CONTROL_ID, POSEIDON_CONTROL_ID, SHA256_CONTROL_ID, POSEIDON2_CONTROL_ID},
     recursion::SuccinctReceipt,
 };
 use crate::{
@@ -413,6 +413,7 @@ impl SegmentReceipt {
                 .into_iter()
                 .chain(SHA256_CONTROL_ID)
                 .chain(BLAKE2B_CONTROL_ID)
+                .chain(POSEIDON2_CONTROL_ID)
                 .find(|x| Digest::from_hex(x).unwrap() == *control_id)
                 .map(|_| ())
                 .ok_or(VerificationError::ControlVerificationError)
@@ -516,6 +517,7 @@ impl Default for VerifierContext {
                 ("blake2b".into(), Blake2bCpuHashSuite::new_suite()),
                 ("poseidon".into(), PoseidonHashSuite::new_suite()),
                 ("sha-256".into(), Sha256HashSuite::new_suite()),
+                ("poseidon2".into(), Poseidon2HashSuite::new_suite()),
             ]),
         }
     }

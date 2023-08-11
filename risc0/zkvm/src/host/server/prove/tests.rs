@@ -17,7 +17,7 @@ use std::rc::Rc;
 use anyhow::Result;
 use risc0_circuit_rv32im::cpu::CpuCircuitHal;
 use risc0_zkp::{
-    core::{digest::Digest, hash::blake2b::Blake2bCpuHashSuite},
+    core::{digest::Digest, hash::blake2b::Blake2bCpuHashSuite, hash::poseidon2::Poseidon2HashSuite},
     hal::cpu::CpuHal,
     verify::VerificationError,
 };
@@ -62,6 +62,18 @@ fn hashfn_blake2b() {
     let input = to_vec(&MultiTestSpec::DoNothing).unwrap();
     let env = ExecutorEnv::builder().add_input(&input).build().unwrap();
     let prover = ProverImpl::new("cpu:blake2b", hal_pair);
+    prover.prove_elf(env, MULTI_TEST_ELF).unwrap();
+}
+
+#[test]
+fn hashfn_poseidon2() {
+    let hal_pair = HalPair {
+        hal: Rc::new(CpuHal::new(Poseidon2HashSuite::new_suite())),
+        circuit_hal: Rc::new(CpuCircuitHal::new(&CIRCUIT)),
+    };
+    let input = to_vec(&MultiTestSpec::DoNothing).unwrap();
+    let env = ExecutorEnv::builder().add_input(&input).build().unwrap();
+    let prover = ProverImpl::new("cpu:poseidon2", hal_pair);
     prover.prove_elf(env, MULTI_TEST_ELF).unwrap();
 }
 

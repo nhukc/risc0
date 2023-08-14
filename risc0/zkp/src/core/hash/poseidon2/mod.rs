@@ -25,7 +25,7 @@ use risc0_core::field::{
 };
 
 use self::consts::{
-    M_INT_DIAG_ULVT, M_EXT_MONTGOMERY, ROUNDS_HALF_FULL, ROUNDS_PARTIAL, ROUND_CONSTANTS,
+    M_INT_DIAG_ULVT, ROUNDS_HALF_FULL, ROUNDS_PARTIAL, ROUND_CONSTANTS,
 };
 pub use self::{consts::CELLS, rng::Poseidon2Rng};
 use super::{HashFn, HashSuite, Rng, RngFactory};
@@ -131,14 +131,38 @@ fn multiply_by_m_int(cells: &mut [Elem; CELLS]) {
     }
 }
 
+fn multiply_by_4x4_circulant(x: & [Elem; 4]) -> [Elem; 4] {
+    // See appendix B of Poseidon2 paper.
+    let t0 = x[0] + x[1];
+    let t1 = x[2] + x[3];
+    let t2 = Elem::new(2)*x[1] + t1;
+    let t3 = Elem::new(2)*x[3] + t0;
+    let t4 = Elem::new(4)*t1 + t3;
+    let t5 = Elem::new(4)*t0 + t2;
+    let t6 = t3 + t5;
+    let t7 = t2 + t4;
+    [t6, t5, t7, t4]
+}
+
 fn multiply_by_m_ext(cells: &mut [Elem; CELLS]) {
+    // Optimized method for multiplication by M_EXT.
+    // See appendix B of Poseidon2 paper for additional details.
     let old_cells = *cells;
     for i in 0..CELLS {
-        let mut tot = Elem::new(0);
-        for j in 0..CELLS {
-            tot += M_EXT_MONTGOMERY[i * CELLS + j] * old_cells[j];
+        cells[i] = Elem::new(0);
+    }
+    let mut tmp_sums = [Elem::new(0); 4];
+
+    for i in 0..CELLS/4 {
+        let chunk_array: [Elem; 4] = [old_cells[i*4], old_cells[i*4 + 1], old_cells[i*4 + 2], old_cells[i*4 + 3]];
+        let out = multiply_by_4x4_circulant(&chunk_array);
+        for j in 0..4 {
+            tmp_sums[j] += Elem::new_raw(1)*out[j];
+            cells[i*4 + j] += Elem::new_raw(1)*out[j];
         }
-        cells[i] = tot;
+    }
+    for i in 0..CELLS {
+        cells[i] += tmp_sums[i % 4];
     }
 }
 
@@ -206,7 +230,7 @@ where
 #[cfg(test)]
 mod tests {
     use test_log::test;
-    use crate::core::hash::poseidon2::consts::_M_EXT;
+    use crate::core::hash::poseidon2::consts::{_M_EXT, _M_EXT_MONTGOMERY};
 
     use super::*;
 
@@ -218,6 +242,17 @@ mod tests {
         add_round_constants_partial(cells, round);
         do_partial_sboxes(cells);
         multiply_by_m_int_naive(cells);
+    }
+
+    fn multiply_by_m_ext_naive(cells: &mut [Elem; CELLS]) {
+        let old_cells = *cells;
+        for i in 0..CELLS {
+            let mut tot = Elem::new(0);
+            for j in 0..CELLS {
+                tot += _M_EXT_MONTGOMERY[i * CELLS + j] * old_cells[j];
+            }
+            cells[i] = tot;
+        }
     }
 
     fn multiply_by_m_int_naive(cells: &mut [Elem; CELLS]) {
@@ -238,7 +273,7 @@ mod tests {
     // Naive version of poseidon
     fn poseidon2_mix_naive(cells: &mut [Elem; CELLS]) {
         let mut round = 0;
-        multiply_by_m_ext(cells);
+        multiply_by_m_ext_naive(cells);
         for _i in 0..ROUNDS_HALF_FULL {
             full_round(cells, round);
             round += 1;
@@ -299,7 +334,7 @@ mod tests {
     fn poseidon2_ext_matrices_match() {
         for i in 0..CELLS {
             for j in 0..CELLS {
-                assert_eq!(_M_EXT[i * CELLS + j].as_u32(), M_EXT_MONTGOMERY[i * CELLS + j].as_u32_montgomery());
+                assert_eq!(_M_EXT[i * CELLS + j].as_u32(), _M_EXT_MONTGOMERY[i * CELLS + j].as_u32_montgomery());
             }
         }
     }

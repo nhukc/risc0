@@ -163,7 +163,7 @@ pub const _M_EXT: &[Elem] = &baby_bear_array![
 //
 // Since det(M_k) and (r^-1)^k are both non-zero, (r^-1)^k * det(M_k) is also non-zero.  Since
 // all square submatrices have non-zero determinant, M_EXT_MONTGOMERY is MDS.
-pub const M_EXT_MONTGOMERY: &[Elem] = &baby_bear_array![
+pub const _M_EXT_MONTGOMERY: &[Elem] = &baby_bear_array![
     0x527ffffc, 0x437ffffa, 0x70800000, 0x617ffffe, 0x293ffffe, 0x21bffffd, 0x38400000, 0x30bfffff,
     0x293ffffe, 0x21bffffd, 0x38400000, 0x30bfffff, 0x293ffffe, 0x21bffffd, 0x38400000, 0x30bfffff,
     0x293ffffe, 0x21bffffd, 0x38400000, 0x30bfffff, 0x293ffffe, 0x21bffffd, 0x38400000, 0x30bfffff,

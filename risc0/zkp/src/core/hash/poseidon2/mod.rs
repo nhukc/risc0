@@ -25,7 +25,7 @@ use risc0_core::field::{
 };
 
 use self::consts::{
-    M_INT_DIAG, M_EXT, ROUNDS_HALF_FULL, ROUNDS_PARTIAL, ROUND_CONSTANTS,
+    M_INT_DIAG_ULVT, M_EXT_MONTGOMERY, ROUNDS_HALF_FULL, ROUNDS_PARTIAL, ROUND_CONSTANTS,
 };
 pub use self::{consts::CELLS, rng::Poseidon2Rng};
 use super::{HashFn, HashSuite, Rng, RngFactory};
@@ -127,7 +127,7 @@ fn multiply_by_m_int(cells: &mut [Elem; CELLS]) {
         sum += cells[i];
     }
     for i in 0..CELLS {
-        cells[i] = sum + M_INT_DIAG[i] * cells[i];
+        cells[i] = sum + M_INT_DIAG_ULVT[i] * cells[i];
     }
 }
 
@@ -136,7 +136,7 @@ fn multiply_by_m_ext(cells: &mut [Elem; CELLS]) {
     for i in 0..CELLS {
         let mut tot = Elem::new(0);
         for j in 0..CELLS {
-            tot += M_EXT[i * CELLS + j] * old_cells[j];
+            tot += M_EXT_MONTGOMERY[i * CELLS + j] * old_cells[j];
         }
         cells[i] = tot;
     }
@@ -206,6 +206,7 @@ where
 #[cfg(test)]
 mod tests {
     use test_log::test;
+    use crate::core::hash::poseidon2::consts::_M_EXT;
 
     use super::*;
 
@@ -225,7 +226,7 @@ mod tests {
             let mut tot = Elem::new(0);
             for j in 0..CELLS {
                 if i == j {
-                    tot += (M_INT_DIAG[i] + Elem::new(1)) * old_cells[j];
+                    tot += (M_INT_DIAG_ULVT[i] + Elem::new(1)) * old_cells[j];
                 } else {
                     tot += old_cells[j];
                 }
@@ -283,14 +284,23 @@ mod tests {
         log::debug!("input: {:?}", buf);
         poseidon2_mix(&mut buf);
         let goal: [u32; CELLS] = [
-            0x2ED3E23D, 0x12921FB0, 0x0E659E79, 0x61D81DC9, 0x32BAE33B, 0x62486AE3, 0x1E681B60, 0x24B91325,
-            0x2A2EF5B9, 0x50E8593E, 0x5BC818EC, 0x10691997, 0x35A14520, 0x2BA6A3C5, 0x279D47EC, 0x55014E81,
-            0x5953A67F, 0x2F403111, 0x6B8828FF, 0x1801301F, 0x2749207A, 0x3DC9CF21, 0x3C985BA2, 0x57A99864,
+            0x08007b06, 0x7670b735, 0x70312c6b, 0x2ee92f8e, 0x7206cd75, 0x4f4d5907, 0x72e7763c, 0x3bdf2875,
+            0x1b7f7564, 0x519d73f0, 0x114ff3d0, 0x3cb62b62, 0x69871e79, 0x5826dc02, 0x1d2512c7, 0x6d6d1f1b,
+            0x140d841a, 0x6b8e6bdc, 0x2f1c5867, 0x29591570, 0x656a3362, 0x21f7c0c0, 0x4426143a, 0x5a78bbb4
         ];
         for i in 0..CELLS {
             assert_eq!(buf[i].as_u32(), goal[i]);
         }
 
         log::debug!("output: {:?}", buf);
+    }
+
+    #[test]
+    fn poseidon2_ext_matrices_match() {
+        for i in 0..CELLS {
+            for j in 0..CELLS {
+                assert_eq!(_M_EXT[i * CELLS + j].as_u32(), M_EXT_MONTGOMERY[i * CELLS + j].as_u32_montgomery());
+            }
+        }
     }
 }
